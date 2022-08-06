@@ -1,0 +1,1511 @@
+{
+  "Resources": {
+    "fileSplitterLambdaIAMRole76B56A08": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          },
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+              ]
+            ]
+          }
+        ],
+        "RoleName": "anl-vip-dev-iam-input-filesplitter"
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/fileSplitterLambdaIAMRole/Resource"
+      }
+    },
+    "GenericKMSKey6094727C": {
+      "Type": "AWS::KMS::Key",
+      "Properties": {
+        "KeyPolicy": {
+          "Statement": [
+            {
+              "Action": [
+                "kms:Create*",
+                "kms:Describe*",
+                "kms:Enable*",
+                "kms:List*",
+                "kms:Put*",
+                "kms:Update*",
+                "kms:Revoke*",
+                "kms:Disable*",
+                "kms:Get*",
+                "kms:Delete*",
+                "kms:ScheduleKeyDeletion",
+                "kms:CancelKeyDeletion",
+                "kms:GenerateDataKey",
+                "kms:TagResource",
+                "kms:UntagResource"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":iam::163349946705:root"
+                    ]
+                  ]
+                }
+              },
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "kms:Decrypt",
+                "kms:Encrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "TaskDefinitionTaskRoleFD40A61D",
+                    "Arn"
+                  ]
+                }
+              },
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Description": "check key",
+        "EnableKeyRotation": true,
+        "PendingWindowInDays": 7
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/GenericKMSKey/Resource"
+      }
+    },
+    "GenericKMSKeyAliasC3B5B93A": {
+      "Type": "AWS::KMS::Alias",
+      "Properties": {
+        "AliasName": "alias/anl-vip-dev-kms-input-filesplitter",
+        "TargetKeyId": {
+          "Fn::GetAtt": [
+            "GenericKMSKey6094727C",
+            "Arn"
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/GenericKMSKey/Alias/Resource"
+      }
+    },
+    "srcs3bucketNotifications8282D5F1": {
+      "Type": "Custom::S3BucketNotifications",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "BucketNotificationsHandler050a0587b7544547bf325f094a3db8347ECC3691",
+            "Arn"
+          ]
+        },
+        "BucketName": {
+          "Ref": "srcs3bucket6CD8E03A"
+        },
+        "NotificationConfiguration": {
+          "LambdaFunctionConfigurations": [
+            {
+              "Events": [
+                "s3:ObjectCreated:*"
+              ],
+              "LambdaFunctionArn": {
+                "Fn::GetAtt": [
+                  "FileSPlitterFunctionIdBC4FA6EA",
+                  "Arn"
+                ]
+              }
+            }
+          ]
+        },
+        "Managed": true
+      },
+      "DependsOn": [
+        "FileSPlitterFunctionIdBC4FA6EA",
+        "srcs3bucketAllowBucketNotificationsToanlvipdevcsvfilesplitterFileSPlitterFunctionId662356BB49FF1646"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/src_s3_bucket/Notifications/Resource"
+      }
+    },
+    "srcs3bucket6CD8E03A": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "AccessControl": "Private",
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "KMSMasterKeyID": {
+                  "Fn::GetAtt": [
+                    "GenericKMSKey6094727C",
+                    "Arn"
+                  ]
+                },
+                "SSEAlgorithm": "aws:kms"
+              }
+            }
+          ]
+        },
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      },
+      "DependsOn": [
+        "FileSPlitterFunctionIdBC4FA6EA"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/src_s3_bucket/Resource"
+      }
+    },
+    "srcs3bucketPolicy7AE28F10": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "srcs3bucket6CD8E03A"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              },
+              "Effect": "Deny",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "srcs3bucket6CD8E03A",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "srcs3bucket6CD8E03A",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ],
+              "Sid": "AllowSSLRequestsOnly"
+            },
+            {
+              "Action": "s3:putobject",
+              "Condition": {
+                "StringNotEquals": {
+                  "s3:x-amz-server-side-encryption": "aws:kms"
+                },
+                "Null": {
+                  "s3:x-amz-server-side-encryption": "true"
+                }
+              },
+              "Effect": "Deny",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "srcs3bucket6CD8E03A",
+                        "Arn"
+                      ]
+                    },
+                    "/*"
+                  ]
+                ]
+              },
+              "Sid": "AllowSSEForKmsRequestsOnly"
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "DependsOn": [
+        "FileSPlitterFunctionIdBC4FA6EA"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/src_s3_bucket/Policy/Resource"
+      }
+    },
+    "srcs3bucketAllowBucketNotificationsToanlvipdevcsvfilesplitterFileSPlitterFunctionId662356BB49FF1646": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "FileSPlitterFunctionIdBC4FA6EA",
+            "Arn"
+          ]
+        },
+        "Principal": "s3.amazonaws.com",
+        "SourceAccount": "163349946705",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "srcs3bucket6CD8E03A",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "FileSPlitterFunctionIdBC4FA6EA"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/src_s3_bucket/AllowBucketNotificationsToanlvipdevcsvfilesplitterFileSPlitterFunctionId662356BB"
+      }
+    },
+    "tgts3bucket6A85C6BE": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "AccessControl": "Private",
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "KMSMasterKeyID": {
+                  "Fn::GetAtt": [
+                    "GenericKMSKey6094727C",
+                    "Arn"
+                  ]
+                },
+                "SSEAlgorithm": "aws:kms"
+              }
+            }
+          ]
+        },
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/tgt_s3_bucket/Resource"
+      }
+    },
+    "tgts3bucketPolicyC64FB655": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "tgts3bucket6A85C6BE"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              },
+              "Effect": "Deny",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "tgts3bucket6A85C6BE",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "tgts3bucket6A85C6BE",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ],
+              "Sid": "AllowSSLRequestsOnly"
+            },
+            {
+              "Action": "s3:putobject",
+              "Condition": {
+                "StringNotEquals": {
+                  "s3:x-amz-server-side-encryption": "aws:kms"
+                },
+                "Null": {
+                  "s3:x-amz-server-side-encryption": "true"
+                }
+              },
+              "Effect": "Deny",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "tgts3bucket6A85C6BE",
+                        "Arn"
+                      ]
+                    },
+                    "/*"
+                  ]
+                ]
+              },
+              "Sid": "AllowSSEForKmsRequestsOnly"
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/tgt_s3_bucket/Policy/Resource"
+      }
+    },
+    "ECRRepositoryF3A3832E": {
+      "Type": "AWS::ECR::Repository",
+      "Properties": {
+        "ImageScanningConfiguration": {
+          "ScanOnPush": true
+        },
+        "RepositoryName": "anl-vip-dev-input-filesplitter"
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECRRepository/Resource"
+      }
+    },
+    "TaskDefinitionTaskRoleFD40A61D": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/TaskDefinition/TaskRole/Resource"
+      }
+    },
+    "TaskDefinitionTaskRoleDefaultPolicy282E8624": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "kms:Decrypt",
+                "kms:Encrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "GenericKMSKey6094727C",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": "s3:*",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "srcs3bucket6CD8E03A",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "srcs3bucket6CD8E03A",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "s3:*",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "tgts3bucket6A85C6BE",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "tgts3bucket6A85C6BE",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "TaskDefinitionTaskRoleDefaultPolicy282E8624",
+        "Roles": [
+          {
+            "Ref": "TaskDefinitionTaskRoleFD40A61D"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/TaskDefinition/TaskRole/DefaultPolicy/Resource"
+      }
+    },
+    "TaskDefinitionB36D86D9": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ContainerDefinitions": [
+          {
+            "Environment": [
+              {
+                "Name": "P_ECR_REPOSITORY_NAME",
+                "Value": {
+                  "Ref": "ECRRepositoryF3A3832E"
+                }
+              },
+              {
+                "Name": "P_LOG_GROUP_NAME",
+                "Value": "anl-vip-dev-input-filesplitter"
+              },
+              {
+                "Name": "P_ENVIRONMENT",
+                "Value": "dev"
+              },
+              {
+                "Name": "P_REQUEST_PAYLOAD_REGION",
+                "Value": "us-east-1"
+              },
+              {
+                "Name": "P_TGT_BUCKET",
+                "Value": {
+                  "Ref": "tgts3bucket6A85C6BE"
+                }
+              },
+              {
+                "Name": "P_KMS_KEY",
+                "Value": {
+                  "Ref": "GenericKMSKey6094727C"
+                }
+              }
+            ],
+            "Essential": true,
+            "Image": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Fn::Select": [
+                      4,
+                      {
+                        "Fn::Split": [
+                          ":",
+                          {
+                            "Fn::GetAtt": [
+                              "ECRRepositoryF3A3832E",
+                              "Arn"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  ".dkr.ecr.",
+                  {
+                    "Fn::Select": [
+                      3,
+                      {
+                        "Fn::Split": [
+                          ":",
+                          {
+                            "Fn::GetAtt": [
+                              "ECRRepositoryF3A3832E",
+                              "Arn"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  ".",
+                  {
+                    "Ref": "AWS::URLSuffix"
+                  },
+                  "/",
+                  {
+                    "Ref": "ECRRepositoryF3A3832E"
+                  },
+                  ":latest"
+                ]
+              ]
+            },
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "CloudWatchLogGroup9E01D9EC"
+                },
+                "awslogs-stream-prefix": "ecs",
+                "awslogs-region": "us-east-1"
+              }
+            },
+            "Name": "TaskDefinitionFileSplitter"
+          }
+        ],
+        "Cpu": "256",
+        "ExecutionRoleArn": {
+          "Fn::GetAtt": [
+            "TaskDefinitionExecutionRole8D61C2FB",
+            "Arn"
+          ]
+        },
+        "Family": "anl-vip-dev-input-filesplitter",
+        "Memory": "512",
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": [
+          "FARGATE"
+        ],
+        "TaskRoleArn": {
+          "Fn::GetAtt": [
+            "TaskDefinitionTaskRoleFD40A61D",
+            "Arn"
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/TaskDefinition/Resource"
+      }
+    },
+    "TaskDefinitionExecutionRole8D61C2FB": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/TaskDefinition/ExecutionRole/Resource"
+      }
+    },
+    "TaskDefinitionExecutionRoleDefaultPolicy1F3406F5": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchGetImage"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ECRRepositoryF3A3832E",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": "ecr:GetAuthorizationToken",
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "CloudWatchLogGroup9E01D9EC",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "TaskDefinitionExecutionRoleDefaultPolicy1F3406F5",
+        "Roles": [
+          {
+            "Ref": "TaskDefinitionExecutionRole8D61C2FB"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/TaskDefinition/ExecutionRole/DefaultPolicy/Resource"
+      }
+    },
+    "CloudWatchLogGroup9E01D9EC": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "ecs/anl-vip-dev-input-filesplitter",
+        "RetentionInDays": 60
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain",
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/CloudWatchLogGroup/Resource"
+      }
+    },
+    "ECSFarGateCluster6923B9FA": {
+      "Type": "AWS::ECS::Cluster",
+      "Properties": {
+        "ClusterName": "anl-vip-dev-input-filesplitter"
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Resource"
+      }
+    },
+    "ECSFarGateClusterVpc6381DAD9": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/16",
+        "EnableDnsHostnames": true,
+        "EnableDnsSupport": true,
+        "InstanceTenancy": "default",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/Resource"
+      }
+    },
+    "ECSFarGateClusterVpcPublicSubnet1Subnet5ADE081C": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/18",
+        "VpcId": {
+          "Ref": "ECSFarGateClusterVpc6381DAD9"
+        },
+        "AvailabilityZone": "us-east-1a",
+        "MapPublicIpOnLaunch": true,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Public"
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Public"
+          },
+          {
+            "Key": "Name",
+            "Value": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet1"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet1/Subnet"
+      }
+    },
+    "ECSFarGateClusterVpcPublicSubnet1RouteTableC38B420E": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "ECSFarGateClusterVpc6381DAD9"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet1"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet1/RouteTable"
+      }
+    },
+    "ECSFarGateClusterVpcPublicSubnet1RouteTableAssociationE2F0535F": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "ECSFarGateClusterVpcPublicSubnet1RouteTableC38B420E"
+        },
+        "SubnetId": {
+          "Ref": "ECSFarGateClusterVpcPublicSubnet1Subnet5ADE081C"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet1/RouteTableAssociation"
+      }
+    },
+    "ECSFarGateClusterVpcPublicSubnet1DefaultRouteFB8136C5": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "ECSFarGateClusterVpcPublicSubnet1RouteTableC38B420E"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "ECSFarGateClusterVpcIGW072DB168"
+        }
+      },
+      "DependsOn": [
+        "ECSFarGateClusterVpcVPCGW830F711D"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet1/DefaultRoute"
+      }
+    },
+    "ECSFarGateClusterVpcPublicSubnet1EIP60E8CD36": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet1"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet1/EIP"
+      }
+    },
+    "ECSFarGateClusterVpcPublicSubnet1NATGatewayDE9C281A": {
+      "Type": "AWS::EC2::NatGateway",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "ECSFarGateClusterVpcPublicSubnet1Subnet5ADE081C"
+        },
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "ECSFarGateClusterVpcPublicSubnet1EIP60E8CD36",
+            "AllocationId"
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet1"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet1/NATGateway"
+      }
+    },
+    "ECSFarGateClusterVpcPublicSubnet2Subnet9953CEBA": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "10.0.64.0/18",
+        "VpcId": {
+          "Ref": "ECSFarGateClusterVpc6381DAD9"
+        },
+        "AvailabilityZone": "us-east-1b",
+        "MapPublicIpOnLaunch": true,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Public"
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Public"
+          },
+          {
+            "Key": "Name",
+            "Value": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet2"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet2/Subnet"
+      }
+    },
+    "ECSFarGateClusterVpcPublicSubnet2RouteTable36A59714": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "ECSFarGateClusterVpc6381DAD9"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet2"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet2/RouteTable"
+      }
+    },
+    "ECSFarGateClusterVpcPublicSubnet2RouteTableAssociation07C10BFA": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "ECSFarGateClusterVpcPublicSubnet2RouteTable36A59714"
+        },
+        "SubnetId": {
+          "Ref": "ECSFarGateClusterVpcPublicSubnet2Subnet9953CEBA"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet2/RouteTableAssociation"
+      }
+    },
+    "ECSFarGateClusterVpcPublicSubnet2DefaultRoute2870ABE1": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "ECSFarGateClusterVpcPublicSubnet2RouteTable36A59714"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "ECSFarGateClusterVpcIGW072DB168"
+        }
+      },
+      "DependsOn": [
+        "ECSFarGateClusterVpcVPCGW830F711D"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet2/DefaultRoute"
+      }
+    },
+    "ECSFarGateClusterVpcPublicSubnet2EIP8E25657D": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet2"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet2/EIP"
+      }
+    },
+    "ECSFarGateClusterVpcPublicSubnet2NATGateway9406703E": {
+      "Type": "AWS::EC2::NatGateway",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "ECSFarGateClusterVpcPublicSubnet2Subnet9953CEBA"
+        },
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "ECSFarGateClusterVpcPublicSubnet2EIP8E25657D",
+            "AllocationId"
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet2"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PublicSubnet2/NATGateway"
+      }
+    },
+    "ECSFarGateClusterVpcPrivateSubnet1Subnet1422B184": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "10.0.128.0/18",
+        "VpcId": {
+          "Ref": "ECSFarGateClusterVpc6381DAD9"
+        },
+        "AvailabilityZone": "us-east-1a",
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Private"
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Private"
+          },
+          {
+            "Key": "Name",
+            "Value": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PrivateSubnet1"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PrivateSubnet1/Subnet"
+      }
+    },
+    "ECSFarGateClusterVpcPrivateSubnet1RouteTable70133E8C": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "ECSFarGateClusterVpc6381DAD9"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PrivateSubnet1"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PrivateSubnet1/RouteTable"
+      }
+    },
+    "ECSFarGateClusterVpcPrivateSubnet1RouteTableAssociationE873D6A9": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "ECSFarGateClusterVpcPrivateSubnet1RouteTable70133E8C"
+        },
+        "SubnetId": {
+          "Ref": "ECSFarGateClusterVpcPrivateSubnet1Subnet1422B184"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PrivateSubnet1/RouteTableAssociation"
+      }
+    },
+    "ECSFarGateClusterVpcPrivateSubnet1DefaultRoute3569D851": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "ECSFarGateClusterVpcPrivateSubnet1RouteTable70133E8C"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": {
+          "Ref": "ECSFarGateClusterVpcPublicSubnet1NATGatewayDE9C281A"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PrivateSubnet1/DefaultRoute"
+      }
+    },
+    "ECSFarGateClusterVpcPrivateSubnet2SubnetBF85E868": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "10.0.192.0/18",
+        "VpcId": {
+          "Ref": "ECSFarGateClusterVpc6381DAD9"
+        },
+        "AvailabilityZone": "us-east-1b",
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Private"
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Private"
+          },
+          {
+            "Key": "Name",
+            "Value": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PrivateSubnet2"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PrivateSubnet2/Subnet"
+      }
+    },
+    "ECSFarGateClusterVpcPrivateSubnet2RouteTable2C36C5F4": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "ECSFarGateClusterVpc6381DAD9"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PrivateSubnet2"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PrivateSubnet2/RouteTable"
+      }
+    },
+    "ECSFarGateClusterVpcPrivateSubnet2RouteTableAssociation3F8EC89A": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "ECSFarGateClusterVpcPrivateSubnet2RouteTable2C36C5F4"
+        },
+        "SubnetId": {
+          "Ref": "ECSFarGateClusterVpcPrivateSubnet2SubnetBF85E868"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PrivateSubnet2/RouteTableAssociation"
+      }
+    },
+    "ECSFarGateClusterVpcPrivateSubnet2DefaultRoute5C43317F": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "ECSFarGateClusterVpcPrivateSubnet2RouteTable2C36C5F4"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": {
+          "Ref": "ECSFarGateClusterVpcPublicSubnet2NATGateway9406703E"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/PrivateSubnet2/DefaultRoute"
+      }
+    },
+    "ECSFarGateClusterVpcIGW072DB168": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/IGW"
+      }
+    },
+    "ECSFarGateClusterVpcVPCGW830F711D": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "ECSFarGateClusterVpc6381DAD9"
+        },
+        "InternetGatewayId": {
+          "Ref": "ECSFarGateClusterVpcIGW072DB168"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/ECSFarGateCluster/Vpc/VPCGW"
+      }
+    },
+    "FileSPlitterFunctionIdBC4FA6EA": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "AssetParameters78dbd5224b08d4b2f221fa25f6382a7a609d261c181b60749222eed8c1294a2eS3BucketFAF1E21B"
+          },
+          "S3Key": {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "Fn::Select": [
+                    0,
+                    {
+                      "Fn::Split": [
+                        "||",
+                        {
+                          "Ref": "AssetParameters78dbd5224b08d4b2f221fa25f6382a7a609d261c181b60749222eed8c1294a2eS3VersionKey6CEA9FF6"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Fn::Select": [
+                    1,
+                    {
+                      "Fn::Split": [
+                        "||",
+                        {
+                          "Ref": "AssetParameters78dbd5224b08d4b2f221fa25f6382a7a609d261c181b60749222eed8c1294a2eS3VersionKey6CEA9FF6"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            ]
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "fileSplitterLambdaIAMRole76B56A08",
+            "Arn"
+          ]
+        },
+        "Description": "splitter function",
+        "Environment": {
+          "Variables": {
+            "p_cluster_arn": {
+              "Fn::GetAtt": [
+                "ECSFarGateCluster6923B9FA",
+                "Arn"
+              ]
+            },
+            "task_definition": {
+              "Ref": "TaskDefinitionB36D86D9"
+            },
+            "subnet_id": "'subnet-0c0129d517a5fc6cf', 'subnet-0f4e03516484d85d9'",
+            "security_group": "sg-03fccf101bfb35c3d"
+          }
+        },
+        "FunctionName": "anl-vip-dev-lambda-input-filesplitter",
+        "Handler": "lambda_function.lambda_handler",
+        "MemorySize": 256,
+        "Runtime": "python3.8",
+        "Timeout": 900,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            "sg-03fccf101bfb35c3d"
+          ],
+          "SubnetIds": [
+            "subnet-05dbb9bcd6269b68e",
+            "subnet-0f4e03516484d85d9",
+            "subnet-08bf193b876b3513e",
+            "subnet-0c0129d517a5fc6cf",
+            "subnet-0c20d1740f37af285",
+            "subnet-04841b54b72b4e205"
+          ]
+        }
+      },
+      "DependsOn": [
+        "fileSplitterLambdaIAMRole76B56A08"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/FileSPlitterFunctionId/Resource",
+        "aws:asset:path": "asset.78dbd5224b08d4b2f221fa25f6382a7a609d261c181b60749222eed8c1294a2e",
+        "aws:asset:property": "Code"
+      }
+    },
+    "MyNewPolicy7BFC9523": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "ecs:*",
+              "Condition": {
+                "ArnEquals": {
+                  "ecs:cluster": {
+                    "Fn::GetAtt": [
+                      "ECSFarGateCluster6923B9FA",
+                      "Arn"
+                    ]
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Resource": {
+                "Ref": "TaskDefinitionB36D86D9"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "MyNewPolicy7BFC9523",
+        "Roles": [
+          {
+            "Ref": "fileSplitterLambdaIAMRole76B56A08"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/MyNewPolicy/Resource"
+      }
+    },
+    "PassRolePolicyForLambdaECSB0D6F1F8": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "iam:GetRole",
+                "iam:PassRole"
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:iam::163349946705:role/anl-vip-dev-csv-files*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "PassRolePolicyForLambdaECSB0D6F1F8",
+        "Roles": [
+          {
+            "Ref": "fileSplitterLambdaIAMRole76B56A08"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/PassRolePolicyForLambdaECS/Resource"
+      }
+    },
+    "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/BucketNotificationsHandler050a0587b7544547bf325f094a3db834/Role/Resource"
+      }
+    },
+    "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleDefaultPolicy2CF63D36": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:PutBucketNotification",
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleDefaultPolicy2CF63D36",
+        "Roles": [
+          {
+            "Ref": "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/BucketNotificationsHandler050a0587b7544547bf325f094a3db834/Role/DefaultPolicy/Resource"
+      }
+    },
+    "BucketNotificationsHandler050a0587b7544547bf325f094a3db8347ECC3691": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Description": "AWS CloudFormation handler for \"Custom::S3BucketNotifications\" resources (@aws-cdk/aws-s3)",
+        "Code": {
+          "ZipFile": "import boto3  # type: ignore\nimport json\nimport logging\nimport urllib.request\n\ns3 = boto3.client(\"s3\")\n\nCONFIGURATION_TYPES = [\"TopicConfigurations\", \"QueueConfigurations\", \"LambdaFunctionConfigurations\"]\n\ndef handler(event: dict, context):\n    response_status = \"SUCCESS\"\n    error_message = \"\"\n    try:\n        props = event[\"ResourceProperties\"]\n        bucket = props[\"BucketName\"]\n        notification_configuration = props[\"NotificationConfiguration\"]\n        request_type = event[\"RequestType\"]\n        managed = props.get('Managed', 'true').lower() == 'true'\n        stack_id = event['StackId']\n\n        if managed:\n          config = handle_managed(request_type, notification_configuration)\n        else:\n          config = handle_unmanaged(bucket, stack_id, request_type, notification_configuration)\n\n        put_bucket_notification_configuration(bucket, config)\n    except Exception as e:\n        logging.exception(\"Failed to put bucket notification configuration\")\n        response_status = \"FAILED\"\n        error_message = f\"Error: {str(e)}. \"\n    finally:\n        submit_response(event, context, response_status, error_message)\n\n\ndef handle_managed(request_type, notification_configuration):\n  if request_type == 'Delete':\n    return {}\n  return notification_configuration\n\n\ndef handle_unmanaged(bucket, stack_id, request_type, notification_configuration):\n\n  # find external notifications\n  external_notifications = find_external_notifications(bucket, stack_id)\n\n  # if delete, that's all we need\n  if request_type == 'Delete':\n    return external_notifications\n\n  def with_id(notification):\n    notification['Id'] = f\"{stack_id}-{hash(json.dumps(notification, sort_keys=True))}\"\n    return notification\n\n  # otherwise, merge external with incoming config and augment with id\n  notifications = {}\n  for t in CONFIGURATION_TYPES:\n    external = external_notifications.get(t, [])\n    incoming = [with_id(n) for n in notification_configuration.get(t, [])]\n    notifications[t] = external + incoming\n  return notifications\n\n\ndef find_external_notifications(bucket, stack_id):\n  existing_notifications = get_bucket_notification_configuration(bucket)\n  external_notifications = {}\n  for t in CONFIGURATION_TYPES:\n    # if the notification was created by us, we know what id to expect\n    # so we can filter by it.\n    external_notifications[t] = [n for n in existing_notifications.get(t, []) if not n['Id'].startswith(f\"{stack_id}-\")]\n\n  return external_notifications\n\n\ndef get_bucket_notification_configuration(bucket):\n  return s3.get_bucket_notification_configuration(Bucket=bucket)\n\n\ndef put_bucket_notification_configuration(bucket, notification_configuration):\n  s3.put_bucket_notification_configuration(Bucket=bucket, NotificationConfiguration=notification_configuration)\n\n\ndef submit_response(event: dict, context, response_status: str, error_message: str):\n    response_body = json.dumps(\n        {\n            \"Status\": response_status,\n            \"Reason\": f\"{error_message}See the details in CloudWatch Log Stream: {context.log_stream_name}\",\n            \"PhysicalResourceId\": event.get(\"PhysicalResourceId\") or event[\"LogicalResourceId\"],\n            \"StackId\": event[\"StackId\"],\n            \"RequestId\": event[\"RequestId\"],\n            \"LogicalResourceId\": event[\"LogicalResourceId\"],\n            \"NoEcho\": False,\n        }\n    ).encode(\"utf-8\")\n    headers = {\"content-type\": \"\", \"content-length\": str(len(response_body))}\n    try:\n        req = urllib.request.Request(url=event[\"ResponseURL\"], headers=headers, data=response_body, method=\"PUT\")\n        with urllib.request.urlopen(req) as response:\n            print(response.read().decode(\"utf-8\"))\n        print(\"Status code: \" + response.reason)\n    except Exception as e:\n        print(\"send(..) failed executing request.urlopen(..): \" + str(e))\n"
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.7",
+        "Timeout": 300
+      },
+      "DependsOn": [
+        "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleDefaultPolicy2CF63D36",
+        "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/BucketNotificationsHandler050a0587b7544547bf325f094a3db834/Resource"
+      }
+    },
+    "CDKMetadata": {
+      "Type": "AWS::CDK::Metadata",
+      "Properties": {
+        "Analytics": "v2:deflate64:H4sIAAAAAAAA/12STW/CMAyGfwv3EGAcpt0GbCC0aavKxN0NpmRtkyofQ1XV/764oeu2kx+/cZzXSRZ8sZzz+eQRrnYqTsWsFdogbw8ORME2Z/XuXe0d22hlnfHCkZai1d4IZD+wshZd2JNLlVNFAgYqdGg6Ro1bCRVvU11iv51iokspmr62p44VleXtC/YahVUpwVLSQ8fskrdrLwrsPdwohrHZnzwma7DYsRKq7AS8pQPRVNJaqRXbeiUcQZAH7hgKE9xira102jRx5CGj5WB0CyYHhx9giyc8SyWHNv8VrRxIhea3Vnob7oaqbxj86Tx0fdX5zmhf09LAdOAdb4+1IPWYbFjiszDfwWcq3sVIqfbkKYsXHfVRC6+khYTBab9A8LxPKLyB24WRrtCwxMivgGPjvQouAw8F0cktW7nwWy4VKkevNAX6DJb3f6LrWNK4i1azJX/g95NPK+XUeOVkhTyN8Rvf9TwbhAIAAA=="
+      },
+      "Metadata": {
+        "aws:cdk:path": "anl-vip-dev-csv-filesplitter/CDKMetadata/Default"
+      }
+    }
+  },
+  "Outputs": {
+    "outputLambdaIAMRole": {
+      "Description": "IAM Role used by Lambda Function",
+      "Value": {
+        "Fn::GetAtt": [
+          "fileSplitterLambdaIAMRole76B56A08",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "FileSplitterLambdaIAMRole"
+      }
+    },
+    "GenKmsKeyOutput": {
+      "Description": "generic key",
+      "Value": {
+        "Fn::GetAtt": [
+          "GenericKMSKey6094727C",
+          "Arn"
+        ]
+      },
+      "Export": {
+        "Name": "FileSplitterKMSKey"
+      }
+    },
+    "SourceS3Bucket": {
+      "Description": "Source Bucket",
+      "Value": {
+        "Ref": "srcs3bucket6CD8E03A"
+      },
+      "Export": {
+        "Name": "FileSpliterSrcBucket"
+      }
+    },
+    "TargetS3Bucket": {
+      "Description": "Target Bucket",
+      "Value": {
+        "Ref": "tgts3bucket6A85C6BE"
+      },
+      "Export": {
+        "Name": "FileSpliterSgtBucket"
+      }
+    },
+    "ECRRepositoryName": {
+      "Description": "to be used to push docker image of application name:anl-vip-dev-input-filesplitter",
+      "Value": {
+        "Ref": "ECRRepositoryF3A3832E"
+      }
+    },
+    "ECSTaskDefinitionArn": {
+      "Description": "To be described",
+      "Value": {
+        "Ref": "TaskDefinitionB36D86D9"
+      }
+    }
+  },
+  "Parameters": {
+    "AssetParameters78dbd5224b08d4b2f221fa25f6382a7a609d261c181b60749222eed8c1294a2eS3BucketFAF1E21B": {
+      "Type": "String",
+      "Description": "S3 bucket for asset \"78dbd5224b08d4b2f221fa25f6382a7a609d261c181b60749222eed8c1294a2e\""
+    },
+    "AssetParameters78dbd5224b08d4b2f221fa25f6382a7a609d261c181b60749222eed8c1294a2eS3VersionKey6CEA9FF6": {
+      "Type": "String",
+      "Description": "S3 key for asset version \"78dbd5224b08d4b2f221fa25f6382a7a609d261c181b60749222eed8c1294a2e\""
+    },
+    "AssetParameters78dbd5224b08d4b2f221fa25f6382a7a609d261c181b60749222eed8c1294a2eArtifactHash081E3C4D": {
+      "Type": "String",
+      "Description": "Artifact hash for asset \"78dbd5224b08d4b2f221fa25f6382a7a609d261c181b60749222eed8c1294a2e\""
+    }
+  }
+}

@@ -1,0 +1,8 @@
+boto3==1.16.20
+requests==2.25.0
+watchtower==1.0.6
+pymsteams==0.1.14
+jsonschema
+python-dotenv==0.7.1
+awscli==1.19.56
+xlsxwriter
